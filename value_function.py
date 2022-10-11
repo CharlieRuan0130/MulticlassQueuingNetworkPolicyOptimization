@@ -7,6 +7,7 @@ Written by Patrick Coady (pat-coady.github.io)
 import tensorflow as tf
 import numpy as np
 from sklearn.utils import shuffle
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 class NNValueFunction(object):

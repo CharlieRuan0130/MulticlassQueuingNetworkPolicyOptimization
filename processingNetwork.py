@@ -32,10 +32,10 @@ class ProcessingNetwork:
         self.activities_num = len(self.cumsum_rates)  # number of activities
         self.network_name = name
 
-        if self.network_name[:11] == 'criss_cross' or self.network_name == 'reentrant': # choose "optimal" policy for comparison
-            self.comparison_policy = self.policy_list(name)
-        else:
-            self.comparison_policy = self.policy_list('LBFS')
+        # if self.network_name[:11] == 'criss_cross' or self.network_name == 'reentrant': # choose "optimal" policy for comparison
+        #     self.comparison_policy = self.policy_list(name)
+        # else:
+        #     self.comparison_policy = self.policy_list('LBFS')
 
 
 
@@ -348,4 +348,3 @@ class ProcessingNetwork:
                 distr_one_server[0]  = 1./sum(self.D[server])
             distr.append(distr_one_server)
         return distr
-

@@ -3,6 +3,8 @@ import tensorflow as tf
 import ray.experimental
 import datetime
 import sklearn
+from ray.experimental.tf_utils import TensorFlowVariables
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class Policy(object):
     """ Policy Neural Network """
@@ -44,7 +46,7 @@ class Policy(object):
             self._loss_initial_op()
             self.init = tf.global_variables_initializer()
             self.sess = tf.Session(graph=self.g)
-            self.variables = ray.experimental.TensorFlowVariables(self.loss, self.sess)
+            self.variables = TensorFlowVariables(self.loss, self.sess)
             self.sess.run(self.init)
 
 
@@ -269,8 +271,8 @@ class Policy(object):
                 init = False
                 cycle_length += 1
 
-
-
+                # if t % 50000 == 0:
+                #     print('have not reached, current t is: {}, cyc is:  ', t, cyc)
                 unscaled_obs[t] = state
                 state_input = (state - offset[:-1]) * scale[:-1]  # center and scale observations
 
@@ -297,18 +299,18 @@ class Policy(object):
                 action_for_server = network.dict_absolute_to_per_server_action[act_ind[0]]
 
                 ######### check optimality of the sampled action ################
-                if len(state)==3 and state[0]<140 and state[1]<140 and state[2]<140:
-                    if state[0]==0 or state[2]==0:
-                        total_zero_steps += 1
+                # if len(state)==3 and state[0]<140 and state[1]<140 and state[2]<140:
+                #     if state[0]==0 or state[2]==0:
+                #         total_zero_steps += 1
 
-                    action_optimal = network.comparison_policy[tuple(state)]
-                    if all(action_full == action_optimal) or state[0]==0 or state[2]==0:
-                        action_optimal_sum += 1
+                #     action_optimal = network.comparison_policy[tuple(state)]
+                #     if all(action_full == action_optimal) or state[0]==0 or state[2]==0:
+                #         action_optimal_sum += 1
 
-                else:
-                    action_optimal = network.comparison_policy[tuple(state>0)]
-                    if all(action_full == action_optimal):
-                        action_optimal_sum += 1
+                # else:
+                #     action_optimal = network.comparison_policy[tuple(state>0)]
+                #     if all(action_full == action_optimal):
+                #         action_optimal_sum += 1
                 #######################
 
 

@@ -19,7 +19,9 @@ import processingNetwork as pn
 import random
 import datetime
 import copy
-ray.init(temp_dir='/tmp/ray2')
+import tensorflow as tf
+# ray.init(_temp_dir='/tmp/ray2')
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 MAX_ACTORS = 50  # max number of parallel simulations
 
