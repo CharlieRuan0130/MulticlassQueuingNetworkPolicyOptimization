@@ -182,7 +182,7 @@ def run_policy(network_id, policy, scaler, logger, gamma,
     ####################################################
     return trajectories
 
-def add_disc_sum_rew(trajectories, policy, network, gamma, lam, scaler, iteration):
+def add_disc_sum_rew(trajectories, policy, network, gamma, lam, scaler, iteration, no_AMP):
     """
     compute value function for further training of Value Neural Network
     :param trajectory: simulated data
@@ -195,7 +195,7 @@ def add_disc_sum_rew(trajectories, policy, network, gamma, lam, scaler, iteratio
     start_time = datetime.datetime.now()
     for trajectory in trajectories:
 
-        if iteration!=1:
+        if iteration!=1 and (not no_AMP): # enter this only if using AMP
 
             values = trajectory['values']
             observes = trajectory['observes']
@@ -453,7 +453,7 @@ def log_batch_stats(observes, actions, advantages, disc_sum_rew, logger, episode
 
 # TODO: check shadow name
 def main(network_id, num_policy_iterations, gamma, lam, kl_targ, batch_size, hid1_mult, episode_duration, cycles_num,
-         clipping_parameter, skipping_steps, initial_state_procedure):
+         clipping_parameter, skipping_steps, initial_state_procedure, no_AMP):
     """
     # Main training loop
     :param: see ArgumentParser below
@@ -525,7 +525,7 @@ def main(network_id, num_policy_iterations, gamma, lam, kl_targ, batch_size, hid
 
         add_value(trajectories, val_func, scaler,
                   ray.get(network_id).next_state_list)  # add estimated values to episodes
-        observes, disc_sum_rew_norm = add_disc_sum_rew(trajectories, policy, ray.get(network_id), gamma, lam, scaler, iteration)  # calculate values from data
+        observes, disc_sum_rew_norm = add_disc_sum_rew(trajectories, policy, ray.get(network_id), gamma, lam, scaler, iteration, no_AMP)  # calculate values from data
 
         val_func.fit(observes, disc_sum_rew_norm, logger)  # update value function
         add_value(trajectories, val_func, scaler,
@@ -614,6 +614,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--initial_state_procedure', type=str,
                         help='procedure of generation intial states. Options: previous_iteration, LBFS, load, FBFS, cmu-policy, empty',
                         default = 'empty')
+    parser.add_argument('--no_AMP', action='store_true', help='flag to run without using AMP estimator')
 
 
     args = parser.parse_args()
