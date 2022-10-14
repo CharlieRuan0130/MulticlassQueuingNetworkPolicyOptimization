@@ -23,7 +23,7 @@ import tensorflow as tf
 # ray.init(_temp_dir='/tmp/ray2')
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-MAX_ACTORS = 50  # max number of parallel simulations
+MAX_ACTORS = 2  # max number of parallel simulations
 
 def diag_dot(A, B):
     # returns np.diag(np.dot(A, B))
@@ -553,7 +553,7 @@ def main(network_id, num_policy_iterations, gamma, lam, kl_targ, batch_size, hid
     weights_set.append(policy.get_weights())
     scaler_set.append(copy.copy(scaler))
 
-    performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 5*10**6)
+    performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 10**6)
 
     file_res = os.path.join(logger.path_weights, 'average_' + str(performance_evolution_all[-1]) + '+-' +str(ci_all[-1]) + '.txt')
     file = open(file_res, "w")
@@ -580,7 +580,7 @@ if __name__ == "__main__":
 
 
     start_time = datetime.datetime.now()
-    network = pn.ProcessingNetwork.from_name('criss_crossIM') # queuing network declaration
+    network = pn.ProcessingNetwork.from_name('criss_crossIH') # queuing network declaration
     end_time = datetime.datetime.now()
     time_policy = end_time - start_time
     print('time of queuing network object creation:', int((time_policy.total_seconds() / 60) * 100) / 100., 'minutes')
@@ -592,7 +592,7 @@ if __name__ == "__main__":
                                                   'using Proximal Policy Optimizer'))
 
     parser.add_argument('-n', '--num_policy_iterations', type=int, help='Number of policy iterations to run',
-                        default = 200)
+                        default = 2)
     parser.add_argument('-g', '--gamma', type=float, help='Discount factor',
                         default = 1)
     parser.add_argument('-l', '--lam', type=float, help='Lambda for Generalized Advantage Estimation',
@@ -600,7 +600,7 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default = 0.003)
     parser.add_argument('-b', '--batch_size', type=int, help='Number of episodes per training batch',
-                        default = 50)
+                        default = 2)
     parser.add_argument('-m', '--hid1_mult', type=int, help='Size of first hidden layer for value and policy NNs',
                         default = 10)
     parser.add_argument('-t', '--episode_duration', type=int, help='Number of time-steps per an episode',

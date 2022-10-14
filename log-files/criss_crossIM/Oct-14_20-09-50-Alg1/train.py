@@ -553,7 +553,7 @@ def main(network_id, num_policy_iterations, gamma, lam, kl_targ, batch_size, hid
     weights_set.append(policy.get_weights())
     scaler_set.append(copy.copy(scaler))
 
-    performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 5*10**6)
+    performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 5 * 10**6)
 
     file_res = os.path.join(logger.path_weights, 'average_' + str(performance_evolution_all[-1]) + '+-' +str(ci_all[-1]) + '.txt')
     file = open(file_res, "w")

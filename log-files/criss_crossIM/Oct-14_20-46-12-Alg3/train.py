@@ -594,9 +594,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--num_policy_iterations', type=int, help='Number of policy iterations to run',
                         default = 200)
     parser.add_argument('-g', '--gamma', type=float, help='Discount factor',
-                        default = 1)
+                        default = 0.998)
     parser.add_argument('-l', '--lam', type=float, help='Lambda for Generalized Advantage Estimation',
-                        default = 1)
+                        default = 0.99)
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default = 0.003)
     parser.add_argument('-b', '--batch_size', type=int, help='Number of episodes per training batch',
@@ -604,9 +604,9 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--hid1_mult', type=int, help='Size of first hidden layer for value and policy NNs',
                         default = 10)
     parser.add_argument('-t', '--episode_duration', type=int, help='Number of time-steps per an episode',
-                        default = 10**6)
+                        default = 10**7)
     parser.add_argument('-y', '--cycles_num', type=int, help='Number of cycles',
-                        default = 5000)
+                        default = 50000)
     parser.add_argument('-c', '--clipping_parameter', type=float, help='Initial clipping parameter',
                         default = 0.2)
     parser.add_argument('-s', '--skipping_steps', type=int, help='Number of steps for which control is fixed',
