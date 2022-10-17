@@ -15,6 +15,9 @@ class ProcessingNetwork:
         self.p_arriving = np.divide(self.alpha, self.uniform_rate)
         self.p_compl = np.divide(self.mu, self.uniform_rate)
         self.cumsum_rates = np.unique(np.cumsum(np.asarray([self.p_arriving, self.p_compl])))
+        # print("np.asarray([self.p_arriving, self.p_compl])", np.asarray([self.p_arriving, self.p_compl]))
+        # print("np.cumsum(np.asarray([self.p_arriving, self.p_compl])", np.cumsum(np.asarray([self.p_arriving, self.p_compl])))
+        # print("cumsum_rates", self.cumsum_rates)
 
         self.A = np.asarray(A)  # each row represents activity: -1 means job is departing, +1 means job is arriving
         self.routing_matrix = 1 * (self.A > 0)
@@ -142,6 +145,9 @@ class ProcessingNetwork:
             wi+=1 #  activity that will be processed
 
         q = np.asarray(state) > 0 # list of non-empty and empty buffers
+        # int(wi - np.sum(self.alpha > 0)) is ser_i, index of the service event; or which buffer is serviced
+        # action[ser_i] being 1: the action will prioritize this buffer ser_i
+        # action[ser_i] being 0: the action will not prioritize this buffer ser_i
         actions_coin = (action[int(wi - np.sum(self.alpha > 0))] == 1)  # indicates if the activity is legitimate
 
         state_next = state + self.list[(tuple(q), actions_coin, wi)]
@@ -187,14 +193,25 @@ class ProcessingNetwork:
             for s in itertools.product([0, 1], repeat=self.buffers_num):  # combination of non-empty, empty buffers
                 for w in range(0, int(np.sum(self.alpha>0)+np.sum(self.mu>0))):  # activity
 
-                        ar = np.asarray(s, 'int8')
+                        ar = np.asarray(s, 'int8') # current buffer state (empty or not)
                         if w < np.sum(self.alpha>0):  # arrival activity
-                            el = np.nonzero(self.alpha)[0][w]
+                            el = np.nonzero(self.alpha)[0][w] # determines which arrival it corresponds to
                             arriving = np.zeros(self.buffers_num, 'int8')
                             arriving[el] = 1
                             list[(tuple(ar), a, w)] = arriving
                         elif ar[w - np.sum(self.alpha>0)]>0 and \
                                 (a or np.sum(np.dot(ar, adjoint_buffers[w - np.sum(self.alpha>0)]))==0):# service activity is possible
+                            # ser_id = w - np.sum(self.alpha>0) indicates which service activity it is, 
+                            # or essentially which buffer it is
+                            # Cond 1. ar[ser_id]>0  indicates that this buffer is not empty,
+                            # and a service being completed in this buffer indeed makes sense
+                            # Cond 2. np.sum(np.dot(ar, adjoint_buffers[ser_id])): determine if all neighbors 
+                            # of w have an empty buffer
+                            # If a == True, meaning that we indeed have been prioritizing this job, we 
+                            # obvisouly can accept this completion activity;
+                            # If a == False, meaning we were prioritizing somehting else, we only accept
+                            # this completion activity if all other adjoint buffers are empty, in which
+                            # case we assume we have been working on this only available job.
                             list[(tuple(ar), a, w)] = self.A[w - np.sum(self.alpha>0)]
 
                         else:  # service activity is not possible. Fake transition
@@ -303,28 +320,28 @@ class ProcessingNetwork:
         :param states_array: array of states
         :return: probability of each transition
         """
-        states = 1*(states_array > 0)
+        states = 1*(states_array > 0) # whether buffer is non-empty
         arrivals_num = self.activities_num - self.buffers_num # number of arrival flows
         prod_for_actions_list = []
         for action_ind, action in enumerate(self.actions):
             #'constr_trans[i, j]' equals to 1 if ith buffer has to be non-empty (-1 -- empty)
-            # to make jth activity possible
+            # to make jth activity possible; if 0, then it can be either
             constr_trans = np.zeros((self.buffers_num, self.activities_num))
             for b_i in range(self.buffers_num):
                 constr_trans[b_i, b_i + arrivals_num] = 1
                 if action[b_i] == 0:
+                    # if we are not priorityzing this buffer, then this b_i's neighbors
+                    # all have to be empty so that this activity is valid
                     for adj_buf_i in np.nonzero(self.adjoint_buffers[b_i]):
                         constr_trans[adj_buf_i,  b_i + arrivals_num] = -1
 
             # activities legitimacy for the actual data
-            possible_activities = 1*((states @ constr_trans) > 0)
+            possible_activities = 1*((states @ constr_trans) > 0) # (N, activities_num), 1 meaning possible
             for arv_i in range(arrivals_num):
-                possible_activities[:, arv_i] = 1
-
+                possible_activities[:, arv_i] = 1 # arrival activities always possible
             # probability for each activity, except fake one
             prob = possible_activities @ np.diag(np.hstack([self.p_arriving[self.p_arriving > 0], self.p_compl[self.p_compl > 0]]))
-
-            prob_fake_transition = 1 - np.sum(prob, axis=1)  # probability of a fake transition
+            prob_fake_transition = 1 - np.sum(prob, axis=1)  # probability of a fake transition for each time_step
             prod_for_actions = np.hstack([prob, prob_fake_transition[:, np.newaxis]])
             prod_for_actions_list.append(prod_for_actions)
 
@@ -348,3 +365,5 @@ class ProcessingNetwork:
                 distr_one_server[0]  = 1./sum(self.D[server])
             distr.append(distr_one_server)
         return distr
+
+# network = ProcessingNetwork.from_name('criss_crossIM')

@@ -289,6 +289,7 @@ class Policy(object):
 
                 array_actions[0][t] = distr
                 for ar_i in range(1, network.stations_num):
+                    # iterate through each station, get all possible action combinations
                     distr = [a * b for a in distr for b in policy_buffer[tuple(state)][ar_i][0]]
                     array_actions[ar_i][t] = policy_buffer[tuple(state)][ar_i][0]
                 distr = distr / sum(distr)
