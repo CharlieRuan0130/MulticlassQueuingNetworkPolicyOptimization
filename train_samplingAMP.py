@@ -23,7 +23,7 @@ import tensorflow as tf
 # ray.init(_temp_dir='/tmp/ray2')
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-MAX_ACTORS = 2  # max number of parallel simulations
+MAX_ACTORS = 50  # max number of parallel simulations
 
 def diag_dot(A, B):
     # returns np.diag(np.dot(A, B))
@@ -214,17 +214,26 @@ def add_disc_sum_rew(trajectories, policy, network, gamma, lam, scaler, iteratio
 
             action_array = network.next_state_prob(unscaled_obs) # transition probabilities for fixed actions
 
-            ######################################## SAMPLING AMP COMPUTING BELOW ########################################
+            ############################## SAMPLING AMP COMPUTING BELOW - Working Version 1 ##############################
+            # sampled_values = np.zeros((len(action_array), len(observes))) # shape (action_size, N)
+            # for act_ind, act in enumerate(action_array): # for each action, we sample sample_size activities
+            #     for i in range(len(observes)):
+            #         # sample_size smapled activities
+            #         cur_activities = np.random.choice(network.activities_num+1, size=sample_size, 
+            #                                           replace=True, p=act[i])
+            #         # get the values according to these activities
+            #         cur_values = trajectory['values_set'][i, cur_activities]
+            #         sampled_values[act_ind][i] = np.mean(cur_values) # expected zeta(s') according to sampled activities
+            # P_pi = diag_dot(distr, sampled_values)  # expectation of the value function
+            ##############################################################################################################            
+
+            ############################## SAMPLING AMP COMPUTING BELOW - Tried Speeding Up ##############################
             sampled_values = np.zeros((len(action_array), len(observes))) # shape (action_size, N)
             for act_ind, act in enumerate(action_array): # for each action, we sample sample_size activities
-                for i in range(len(observes)):
-                    # sample_size smapled activities
-                    cur_activities = np.random.choice(network.activities_num+1, size=sample_size, 
-                                                      replace=True, p=act[i])
-                    # get the values according to these activities
-                    cur_values = trajectory['values_set'][i, cur_activities]
-                    sampled_values[act_ind][i] = np.mean(cur_values) # expected zeta(s') according to sampled activities
-            P_pi = diag_dot(distr, sampled_values)  # expectation of the value function
+                # RHS, each element is the averaged over S values; so we have N elements
+                # sampled_values[act_ind] = [np.mean(np.random.choice(val_i, size=sample_size, replace=True, p=act_i)) for val_i, act_i in zip(trajectory['values_set'], act)]
+                sampled_values[act_ind] = [np.mean(np.random.choice(trajectory['values_set'][i], size=sample_size, replace=True, p=act[i])) for i in range(len(observes))]
+            P_pi = diag_dot(distr, sampled_values)
             ##############################################################################################################            
 
 
@@ -555,26 +564,26 @@ def main(network_id, num_policy_iterations, gamma, lam, kl_targ, batch_size, hid
 
         logger.write(display=True)  # write logger results to file and stdout
 
-    # weights = policy.get_weights()
+    weights = policy.get_weights()
 
-    # file_weights = os.path.join(logger.path_weights, 'weights_' + str(iteration) + '.npy')
-    # np.save(file_weights, weights)
+    file_weights = os.path.join(logger.path_weights, 'weights_' + str(iteration) + '.npy')
+    np.save(file_weights, weights)
 
-    # file_scaler = os.path.join(logger.path_weights, 'scaler_' + str(iteration) + '.npy')
-    # scale, offset = scaler.get()
-    # np.save(file_scaler, np.asarray([scale, offset]))
-    # weights_set.append(policy.get_weights())
-    # scaler_set.append(copy.copy(scaler))
+    file_scaler = os.path.join(logger.path_weights, 'scaler_' + str(iteration) + '.npy')
+    scale, offset = scaler.get()
+    np.save(file_scaler, np.asarray([scale, offset]))
+    weights_set.append(policy.get_weights())
+    scaler_set.append(copy.copy(scaler))
 
-    # performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 5*10**6)
+    performance_evolution_all, ci_all = run_weights(network_id, weights_set, policy, scaler,cycles = 10**6)
 
-    # file_res = os.path.join(logger.path_weights, 'average_' + str(performance_evolution_all[-1]) + '+-' +str(ci_all[-1]) + '.txt')
-    # file = open(file_res, "w")
-    # for i in range(len(ci_all)):
-    #     file.write(str(performance_evolution_all[i])+'\n')
-    # file.write('\n')
-    # for i in range(len(ci_all)):
-    #     file.write(str(ci_all[i])+'\n')
+    file_res = os.path.join(logger.path_weights, 'average_' + str(performance_evolution_all[-1]) + '+-' +str(ci_all[-1]) + '.txt')
+    file = open(file_res, "w")
+    for i in range(len(ci_all)):
+        file.write(str(performance_evolution_all[i])+'\n')
+    file.write('\n')
+    for i in range(len(ci_all)):
+        file.write(str(ci_all[i])+'\n')
 
 
     logger.close()
@@ -593,7 +602,7 @@ if __name__ == "__main__":
 
 
     start_time = datetime.datetime.now()
-    network = pn.ProcessingNetwork.from_name('criss_crossIM') # queuing network declaration
+    network = pn.ProcessingNetwork.from_name('criss_crossIH') # queuing network declaration
     end_time = datetime.datetime.now()
     time_policy = end_time - start_time
     print('time of queuing network object creation:', int((time_policy.total_seconds() / 60) * 100) / 100., 'minutes')
@@ -605,8 +614,8 @@ if __name__ == "__main__":
                                                   'using Proximal Policy Optimizer'))
 
     parser.add_argument('-n', '--num_policy_iterations', type=int, help='Number of policy iterations to run',
-                        # default = 200)
-                        default = 5)
+                        default = 200)
+                        # default = 2)
     parser.add_argument('-g', '--gamma', type=float, help='Discount factor',
                         default = 1)
     parser.add_argument('-l', '--lam', type=float, help='Lambda for Generalized Advantage Estimation',
@@ -614,15 +623,15 @@ if __name__ == "__main__":
     parser.add_argument('-k', '--kl_targ', type=float, help='D_KL target value',
                         default = 0.003)
     parser.add_argument('-b', '--batch_size', type=int, help='Number of episodes per training batch',
-                        # default = 50)
-                        default = 2)
+                        default = 50)
+                        # default = 2)
     parser.add_argument('-m', '--hid1_mult', type=int, help='Size of first hidden layer for value and policy NNs',
                         default = 10)
     parser.add_argument('-t', '--episode_duration', type=int, help='Number of time-steps per an episode',
                         default = 10**6)
     parser.add_argument('-y', '--cycles_num', type=int, help='Number of cycles',
-                        # default = 5000)
-                        default = 10)
+                        default = 5000)
+                        # default = 10)
     parser.add_argument('-c', '--clipping_parameter', type=float, help='Initial clipping parameter',
                         default = 0.2)
     parser.add_argument('-s', '--skipping_steps', type=int, help='Number of steps for which control is fixed',
