@@ -228,13 +228,27 @@ def add_disc_sum_rew(trajectories, policy, network, gamma, lam, scaler, iteratio
             ##############################################################################################################            
 
             ############################## SAMPLING AMP COMPUTING BELOW - Tried Speeding Up ##############################
-            sampled_values = np.zeros((len(action_array), len(observes))) # shape (action_size, N)
-            for act_ind, act in enumerate(action_array): # for each action, we sample sample_size activities
+            # This version requires iterating over each observes (N); tested to be working
+            # sampled_values = np.zeros((len(action_array), len(observes))) # shape (action_size, N)
+            # for act_ind, act in enumerate(action_array): # for each action, we sample sample_size activities
                 # RHS, each element is the averaged over S values; so we have N elements
                 # sampled_values[act_ind] = [np.mean(np.random.choice(val_i, size=sample_size, replace=True, p=act_i)) for val_i, act_i in zip(trajectory['values_set'], act)]
-                sampled_values[act_ind] = [np.mean(np.random.choice(trajectory['values_set'][i], size=sample_size, replace=True, p=act[i])) for i in range(len(observes))]
-            P_pi = diag_dot(distr, sampled_values)
+                # sampled_values[act_ind] = np.mean([np.random.choice(val_i, size=sample_size, replace=True, p=act_i) for val_i, act_i in zip(trajectory['values_set'], act)], axis=1)
             ##############################################################################################################            
+
+            ############################## SAMPLING AMP COMPUTING BELOW - Tried Speeding Up 2 ##############################
+            # This version iterates over sample_size, and choose one activity for all N rollouts each iteration
+            # Speeds up a lot, but not proved to be working
+            sampled_values = np.zeros((len(action_array), len(observes))) # shape (action_size, N)
+            for act_ind, act in enumerate(action_array): # for each action, we sample sample_size activities
+                cumAct = act.cumsum(axis=1) # cumulative probabilities
+                for _ in range(sample_size): # iterate over S rather than N
+                    u = np.random.rand(len(cumAct), 1) # a [0,1) Uniform RV for each N
+                    choices = (u < cumAct).argmax(axis=1) # the activity index we pick for each N
+                    sampled_values[act_ind] += trajectory['values_set'][np.arange(len(choices)), choices]
+                sampled_values[act_ind] /= sample_size
+            P_pi = diag_dot(distr, sampled_values)
+            ##############################################################################################################  
 
 
             ######################################## ORIGINAL AMP COMPUTING BELOW ########################################
