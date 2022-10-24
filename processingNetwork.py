@@ -33,6 +33,7 @@ class ProcessingNetwork:
         self.buffers_num = len(mu)  # number of buffers
 
         self.activities_num = len(self.cumsum_rates)  # number of activities
+        print('activities num: ', self.activities_num)
         self.network_name = name
 
         # if self.network_name[:11] == 'criss_cross' or self.network_name == 'reentrant': # choose "optimal" policy for comparison
@@ -153,6 +154,28 @@ class ProcessingNetwork:
         state_next = state + self.list[(tuple(q), actions_coin, wi)]
         return state_next
 
+    def next_state_nClassesPerformance(self, state, action):
+        """
+        generate the next state
+        :param state: current state
+        :param action: action
+        :return: next state
+        """
+        w = r.random()
+        wi = 0
+        is_arrival = False
+        while w > self.cumsum_rates[wi]:
+            wi+=1 #  activity that will be processed
+
+        q = np.asarray(state) > 0 # list of non-empty and empty buffers
+        # int(wi - np.sum(self.alpha > 0)) is ser_i, index of the service event; or which buffer is serviced
+        # action[ser_i] being 1: the action will prioritize this buffer ser_i
+        # action[ser_i] being 0: the action will not prioritize this buffer ser_i
+        actions_coin = (action[int(wi - np.sum(self.alpha > 0))] == 1)  # indicates if the activity is legitimate
+        if wi < np.sum(self.alpha > 0) :
+            is_arrival = True
+        state_next = state + self.list[(tuple(q), actions_coin, wi)]
+        return state_next, is_arrival
 
     def next_state_list(self):
         """
