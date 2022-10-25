@@ -258,7 +258,7 @@ class Policy(object):
             ##### modify initial state according to the method of intial states generation######
             if scaler.initial_states_procedure =='previous_iteration':
                 if sum(initial_state[:-1]) > 300 :
-                    initial_state = np.zeros(network.buffersNum+1, 'int8')
+                    initial_state = np.zeros(network.buffers_num+1, 'int8')
                 state = np.asarray(initial_state[:-1],'int32')
             else:
                 state = np.asarray(initial_state, 'int32')
@@ -381,7 +381,7 @@ class Policy(object):
         ##### modify initial state according to the method of intial states generation######
         if scaler.initial_states_procedure =='previous_iteration':
             if sum(initial_state[:-1]) > 300 :
-                initial_state = np.zeros(network.buffersNum+1, 'int8')
+                initial_state = np.zeros(network.buffers_num+1, 'int8')
             state = np.asarray(initial_state[:-1],'int32')
         else:
             state = np.asarray(initial_state, 'int32')
@@ -563,9 +563,13 @@ class Policy(object):
 
         batch_len = len(cost_batch) // batch_num
         rem = len(cost_batch) % batch_num
-        reshaped_costs = np.reshape(cost_batch[:-rem], (batch_num, batch_len))
+        if rem != 0:
+            reshaped_costs = np.reshape(cost_batch[:-rem], (batch_num, batch_len))
+        else:
+            reshaped_costs = np.reshape(cost_batch, (batch_num, batch_len))
         batch_mean = np.mean(reshaped_costs, axis=1) # the mean for each batch (batch_num,)
-        batch_mean[-1] = (batch_mean[-1] * batch_len + np.sum(cost_batch[-rem:])) / (batch_len + rem) # reinclude remainder
+        if rem != 0:
+            batch_mean[-1] = (batch_mean[-1] * batch_len + np.sum(cost_batch[-rem:])) / (batch_len + rem) # reinclude remainder
         ci = 1.96 * np.sqrt(np.var(cost_batch) / batch_num)
 
         print(id, ' average_' + str(average_performance)+'+-' +str(ci))
