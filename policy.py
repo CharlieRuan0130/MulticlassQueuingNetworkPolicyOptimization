@@ -558,6 +558,7 @@ class Policy(object):
 
         # Calculate mean and CI
         cost_batch = np.array(cost_batch)
+        np.save('cost_batch.npy', cost_batch)
         average_performance = np.mean(cost_batch)
 
         batch_len = len(cost_batch) // batch_num
@@ -565,8 +566,7 @@ class Policy(object):
         reshaped_costs = np.reshape(cost_batch[:-rem], (batch_num, batch_len))
         batch_mean = np.mean(reshaped_costs, axis=1) # the mean for each batch (batch_num,)
         batch_mean[-1] = (batch_mean[-1] * batch_len + np.sum(cost_batch[-rem:])) / (batch_len + rem) # reinclude remainder
-        ci_down_up = np.percentile(batch_mean, [2.5, 97.5])
-        ci = (ci_down_up[1] - ci_down_up[0]) / 2
+        ci = 1.96 * np.sqrt(np.var(cost_batch) / batch_num)
 
         print(id, ' average_' + str(average_performance)+'+-' +str(ci))
         return average_performance, id, ci
